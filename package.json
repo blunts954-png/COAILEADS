@@ -1,0 +1,16 @@
+{
+  "name": "coai-lead-engine",
+  "version": "2.1.0",
+  "description": "COAI Lead Engine — God Mode local business prospector",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve . -l 3000",
+    "lint": "npx eslint app.js api/search.js --env browser,node,es2022"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "serve": "^14.2.3"
+  }
+}
