@@ -4,12 +4,13 @@
 // Edit these values to personalise all outreach templates.
 // None of this information is sent to the server — it stays in your browser.
 const CONFIG = {
-  senderName:  'Jason',
-  companyName: 'Chaotically Organized AI',
-  companyUrl:  'chaoticallyorganizedai.com',
-  phone:       '(661) 610-9198',
-  address:     '1712 19th St #216, Bakersfield CA',
-  city:        'Bakersfield',
+  senderName:      'Jason',
+  senderLastName:  'Manuel',         // used in email signature when provided
+  companyName:     'Chaotically Organized AI',
+  companyUrl:      'chaoticallyorganizedai.com',
+  phone:           '(661) 610-9198',
+  address:         '1712 19th St #216, Bakersfield CA',
+  city:            'Bakersfield',
   // Optional: set to a Calendly / booking URL to embed a direct link in outreach.
   // e.g. 'https://calendly.com/your-link'
   bookingLink: '',
@@ -94,7 +95,7 @@ function selectHotOnly() {
                'pest control','landscaping','house cleaning','tattoo shop','hair salon','barber shop'];
   hot.forEach(cat => {
     activeCats.add(cat);
-    const btn = document.querySelector(`[data-cat="${cat}"]`);
+    const btn = document.querySelector(`[data-cat="${CSS.escape(cat)}"]`);
     if (btn) btn.classList.add('active');
   });
   updateCatCount();
@@ -455,8 +456,9 @@ function renderFailedSummary() {
 
 // ─── BUILD LEAD ───────────────────────────────────────────────────────────────
 function buildLead(place, cat) {
-  // Filter out permanently-closed businesses
-  if (place.permanently_closed || place.business_status === 'CLOSED_PERMANENTLY') return null;
+  // Filter out permanently-closed businesses.
+  // Check both business_status (current field) and permanently_closed (deprecated legacy field).
+  if (place.business_status === 'CLOSED_PERMANENTLY' || place.permanently_closed === true) return null;
 
   const minReviews = parseInt(document.getElementById('min-reviews').value) || 0;
   const maxRating  = parseFloat(document.getElementById('max-rating').value) || 5;
@@ -534,7 +536,7 @@ function renderLeads(leads) {
 
     const scoreClass = lead.score >= 50 ? 'score-hot' : lead.score >= 25 ? 'score-warm' : 'score-cold';
     const scoreLabel = lead.score >= 50 ? '🔥 HOT' : lead.score >= 25 ? 'WARM' : 'COLD';
-    const tooltip    = 'SCORE BREAKDOWN\n' + (lead.scoreBreakdown || []).join('\n') + `\n─────────────\nTOTAL: ${lead.score}`;
+    const tooltip = `SCORE BREAKDOWN\n${(lead.scoreBreakdown || []).join('\n')}\n─────────────\nTOTAL: ${lead.score}`;
     const catTags    = (lead.cats || [lead.cat]).map(c => `<span class="lead-cat-tag">${esc(c.toUpperCase())}</span>`).join('');
     const sigTags    = (lead.signals || []).map(s => `<span class="signal-tag sig-${s.type}">${esc(s.label)}</span>`).join('');
     const isSelected = selectedLeads.has(lead.id);
@@ -855,19 +857,20 @@ function generateMsg(lead, type) {
 
   if (type === 'email') {
     const catName = (lead.cats || [lead.cat])[0];
+    const fullName = c.senderLastName ? `${c.senderName} ${c.senderLastName}` : c.senderName;
     return `Subject: Your Google listing for ${lead.name} — quick question
 
 Hi there,
 
 I was searching for ${catName} businesses in ${c.city} and noticed ${lead.name} has ${pain}.
 
-I'm ${c.senderName} ${c.companyName === 'Chaotically Organized AI' ? 'Manuel' : ''}, founder of ${c.companyName} (${c.companyUrl}). We build sovereign websites and AI lead capture systems for local service businesses — starting at $1,200 with full ownership and zero monthly platform fees.
+I'm ${fullName}, founder of ${c.companyName} (${c.companyUrl}). We build sovereign websites and AI lead capture systems for local service businesses — starting at $1,200 with full ownership and zero monthly platform fees.
 
 I'd love to do a free 15-minute audit of your current online presence and show you exactly what it's costing you in missed leads.
 
 ${c.bookingLink ? `Book a time here: ${c.bookingLink}` : `Worth a quick call?`}
 
-— ${c.senderName}
+— ${fullName}
 ${c.phone}
 ${c.companyUrl}
 ${c.address}`;

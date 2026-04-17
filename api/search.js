@@ -21,6 +21,7 @@ const crypto = require('crypto');
 const rateLimitStore = new Map();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 60;
+const MAX_RATE_STORE_SIZE = 10_000; // prune map when it exceeds this entry count
 
 function isRateLimited(ip) {
   const now = Date.now();
@@ -31,7 +32,7 @@ function isRateLimited(ip) {
   }
   entry.count++;
   // Prune stale entries to prevent unbounded memory growth
-  if (rateLimitStore.size > 10_000) {
+  if (rateLimitStore.size > MAX_RATE_STORE_SIZE) {
     for (const [k, v] of rateLimitStore) {
       if (now > v.resetAt) rateLimitStore.delete(k);
     }
@@ -40,12 +41,21 @@ function isRateLimited(ip) {
 }
 
 // ── Timing-safe token comparison ─────────────────────────────────────────────
-// Both values are hashed first so timingSafeEqual always receives equal-length buffers.
+// Converts both strings to Buffers and uses timingSafeEqual.
+// When lengths differ we still perform a constant-time dummy check on the token
+// itself so that we do not leak whether lengths matched via timing.
+// Note: these are API access tokens (not stored passwords), so fast comparison
+// at the buffer level is appropriate; no KDF/slow-hash is needed.
 function safeCompare(a, b) {
   try {
-    const ha = crypto.createHash('sha256').update(String(a)).digest();
-    const hb = crypto.createHash('sha256').update(String(b)).digest();
-    return crypto.timingSafeEqual(ha, hb);
+    const bufA = Buffer.from(String(a));
+    const bufB = Buffer.from(String(b));
+    if (bufA.length !== bufB.length) {
+      // Constant-time dummy op to avoid leaking length information via timing
+      crypto.timingSafeEqual(bufA, bufA);
+      return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
   } catch {
     return false;
   }
